@@ -87,3 +87,195 @@ onPostExcute 함수 내에서 결괏값을 어떻게 사용할 것인지 작성�
 
 </details>
 
+
+## Activity 외부에서 context 사용
+
+<details>
+  
+### 개요
+Activity 외부에서 getString을 사용하고 싶은데 context가 없어서 안된다.
+
+매번 context를 넘겨주거나 해서 companion object에 있는 값을 바꿔주는 것도 귀찮은 일인데
+
+검색해보니까 좋은 방식이 있어서 나한테 필요 없는 부분은 빼고 코틀린 버전으로 만들었다.
+
+### 이용 방법
+```
+import android.app.Application
+import android.content.Context
+
+class App : Application() {
+    override fun onCreate() {
+        super.onCreate()
+        context = this
+    }
+
+    companion object {
+        lateinit var context: Context
+    }
+}
+```
+이렇게 App이라는 class를 하나 만들어주고
+```
+...
+    <application
+        ...
+        android:name=".App">
+    ...
+```
+manifest 파일에서 application 하위에 android:name=".App" 를 추가해 준 뒤
+```
+App.context.getString(R.string.~~~)
+```
+코드 아무 곳에서나 이런 방식으로 꺼내 쓰면 된다.
+
+좀 야매로 해결하는 거 같지만 일단은 유용하게 써먹을 수 있다.
+
+</details>
+
+## 클립보드에 텍스트 복사, 붙여넣기
+
+<details>
+  
+클립보드에 텍스트 복사, 붙여넣기를 하기 위해 코드를 찾아서 좀 변형했는데
+
+설명할만큼 아는 거 같지는 않아서 설명은 생략함
+
+
+```
+import android.content.ClipData
+import android.content.ClipDescription
+import android.content.ClipboardManager
+import android.content.Context
+
+object Clipboard {
+    fun copy(copyData: String?) {
+        val context = App.context
+
+        val clipboard = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        clipboard.setPrimaryClip(ClipData.newPlainText("simple text", copyData))
+
+        //Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+    }
+
+    fun paste(): String {
+        val clipboard = App.context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+        var pasteData: String = ""
+        if (!clipboard.hasPrimaryClip()) {
+
+        } else if (clipboard.primaryClipDescription?.hasMimeType(ClipDescription.MIMETYPE_TEXT_PLAIN)!!) {
+            // This disables the paste menu item, since the clipboard has data but it is not plain text
+        } else {
+            // This enables the paste menu item, since the clipboard contains plain text.
+            val clip = clipboard.primaryClip
+            if (clip != null) {
+                val item = clip.getItemAt(0)
+                pasteData = item.text.toString()
+            }
+        }
+        return pasteData
+    }
+}
+```
+copy랑 paste 함수에서 context를 인자로 받아도 되는데
+[이 방식](#Activity-외부에서-context-사용)을 이용해서 좀 더 쓰기 편하게 했다.
+
+```
+Clipboard.copy("복사할 텍스트")
+Clipboard.paste()
+```
+이런식으로 사용하면 된다.
+
+</details>
+
+## 코드 아무데서나 Toast 쓰기
+
+<details>
+
+코드 작성 중에 간단한 동작 확인을 위해 Toast를 쓸 때가 많은데
+
+Toast는 메인 스레드에서 호출해야되고 context가 필요해서 귀찮다.
+
+그래서 아무데서나 쓸 수 있는 형태로 만들었다.
+
+```
+import android.os.Handler
+import android.os.Looper
+import android.widget.Toast
+
+object Toaster {
+    fun pop(message:String, duration:Int = Toast.LENGTH_SHORT){
+        Handler(Looper.getMainLooper()).post {
+            Toast.makeText(App.context, message, duration).show()
+        }
+    }
+}
+```
+
+[이 방식](#Activity-외부에서-context-사용)을 이용해서 context를 해결했다.
+
+```
+Toaster.pop("메세지", Toast.LENGTH_LONG)
+Toaster.pop("메세지")
+```
+사용할 때는 이렇게
+
+</details> 
+
+## 앱에 아이콘 변경 기능 넣기
+<details>
+
+런처 액티비티를 여러개 만들고
+
+액티비티의 활성화, 비활성화를 이용해서 아이콘 변경을 구현한다.
+
+```
+ <activity android:name=".MainActivity">
+            <intent-filter>
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name=".MainActivity.a"
+            android:label="app-a"
+            android:enabled="true"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
+        <activity-alias
+            android:name=".MainActivity.b"
+            android:label="app-b"
+            android:enabled="false"
+            android:targetActivity=".MainActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+```
+
+먼저 manifest에 activity-alias를 이런식으로 넣어주고
+```
+        packageManager.apply {
+            setComponentEnabledSetting(
+                ComponentName(
+                    "com.e.asdf",
+                    "com.e.asdf.MainActivity.a"
+                ), COMPONENT_ENABLED_STATE_ENABLED, DONT_KILL_APP
+            )
+            setComponentEnabledSetting(
+                ComponentName(
+                    "com.e.asdf",
+                    "com.e.asdf.MainActivity.b"
+                ), COMPONENT_ENABLED_STATE_DISABLED, DONT_KILL_APP
+            )
+        }
+```
+앱 내에서 이런 코드를 통해 바꿀 수 있다.
+
+</details>

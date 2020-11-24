@@ -1,6 +1,9 @@
 # Android
 ## HttpConnect 클래스
 간단한 String 형태로 데이터를 주고 받기 좋게 작성한 httpconnect 라이브러리
+
+<details>
+  
 ### 이용 방법
 #### 1.POST
 
@@ -30,8 +33,12 @@ val result = HttpConnect.post(url, headers) // 연결하고 값 받아오기
 ```
 POST에서 전송할 데이터를 제외함.
 
-## AsyncTask 대체용 추상 클래스 MyAsyncTask
+</details>
+
+## AsyncTask 대체용 > MyAsyncTask 추상 클래스 
 AsyncTaskr가 deprecated 되면서 비슷한 용도로 사용하기 위해 만든 추상 클래스
+
+<details>
 
 ### 이용 방법
 
@@ -52,3 +59,31 @@ doInBackground()내에서 isCancelled()를 이용해서 알아서 멈춰야한�
 정상 종료되면 onPostExcute()가 실행된다.
 
 여기서 doInBackground()를제외한 함수는 모두 메인 UI 스레드에서 실행된다.
+
+</details>
+
+## 파파고 API 사용 예제 > ApiPapago 클래스
+파파고 API를 간단한 용도로 사용하기 위해 만든 클래스
+
+API 신청 및 Key 입력 과정은 생략함
+
+<details>
+  
+### 이용 방법
+```
+btn_trans.setOnClickListener {
+            object : ApiPapago("번역할 문장", "ko", "en") {
+                override fun onPostExecute(result: String?) {
+                    super.onPostExecute(result)
+
+                    textView.text = result
+                }
+            }.excute()
+        }
+```
+위와 같이 함수를 작성하고 번역할 문장, 원본 언어, 목적 언어를 입력하고
+
+onPostExcute 함수 내에서 결괏값을 어떻게 사용할 것인지 작성하면 된다.
+
+</details>
+
